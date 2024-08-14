@@ -1,46 +1,23 @@
--- 请注意: 此脚本需要超级用户权限执行
+-- 授予当前数据库中所有现有schema的权限
+GRANT ALL PRIVILEGES ON ALL SCHEMAS IN DATABASE CURRENT_DATABASE() TO jtdt;
 
--- 将m910b的角色权限授予jtdt
-GRANT m910b TO jtdt;
+-- 授予当前数据库中所有现有表的权限
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO jtdt;
 
--- 创建一个函数来为每个数据库授予权限
-CREATE OR REPLACE FUNCTION grant_privileges_to_jtdt() RETURNS void AS $$
-DECLARE
-    db_record RECORD;
-BEGIN
-    -- 遍历所有非模板数据库
-    FOR db_record IN SELECT datname FROM pg_database WHERE datistemplate = false LOOP
-        -- 授予连接权限
-        EXECUTE format('GRANT CONNECT ON DATABASE %I TO jtdt', db_record.datname);
-        
-        -- 连接到数据库并执行授权操作
-        PERFORM dblink_connect('dbname=' || quote_ident(db_record.datname));
-        
-        -- 授予所有模式的权限
-        PERFORM dblink_exec(format('GRANT ALL PRIVILEGES ON ALL SCHEMAS IN DATABASE %I TO jtdt', db_record.datname));
-        
-        -- 授予所有表的权限
-        PERFORM dblink_exec('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO jtdt');
-        
-        -- 为未来创建的对象设置默认权限
-        PERFORM dblink_exec('ALTER DEFAULT PRIVILEGES FOR USER m910b IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO jtdt');
-        PERFORM dblink_exec('ALTER DEFAULT PRIVILEGES FOR USER m910b IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO jtdt');
-        PERFORM dblink_exec('ALTER DEFAULT PRIVILEGES FOR USER m910b IN SCHEMA public GRANT ALL PRIVILEGES ON FUNCTIONS TO jtdt');
-        
-        -- 刷新权限
-        PERFORM dblink_exec('REASSIGN OWNED BY m910b TO jtdt');
-        
-        -- 断开连接
-        PERFORM dblink_disconnect();
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
+-- 为未来创建的对象设置默认权限
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL PRIVILEGES ON TABLES TO jtdt;
 
--- 确保dblink扩展已安装
-CREATE EXTENSION IF NOT EXISTS dblink;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL PRIVILEGES ON SEQUENCES TO jtdt;
 
--- 执行函数
-SELECT grant_privileges_to_jtdt();
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL PRIVILEGES ON FUNCTIONS TO jtdt;
 
--- 清理：删除临时函数
-DROP FUNCTION grant_privileges_to_jtdt();
+-- 如果有其他schema，也需要为它们设置默认权限
+-- 替换 'other_schema' 为实际的schema名称
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA other_schema
+-- GRANT ALL PRIVILEGES ON TABLES TO jtdt;
+
+-- 确保jtdt用户有连接到该数据库的权限
+GRANT CONNECT ON DATABASE CURRENT_DATABASE() TO jtdt;
