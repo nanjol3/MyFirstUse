@@ -39,3 +39,30 @@ plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right')
 
 plt.tight_layout()
 plt.show()
+
+
+
+def align_dataframes(df1, df2, time_column='start_time'):
+    # 确保时间列是 datetime 类型
+    df1[time_column] = pd.to_datetime(df1[time_column])
+    df2[time_column] = pd.to_datetime(df2[time_column])
+
+    # 计算时间差
+    time_diff = df2[time_column].iloc[0] - df1[time_column].iloc[0]
+
+    # 创建新的 DataFrame，调整 df2 的时间
+    df2_aligned = df2.copy()
+    df2_aligned[time_column] = df2_aligned[time_column] - time_diff
+
+    return df1, df2_aligned
+
+# 使用函数
+m910_aligned, m910b_aligned = align_dataframes(m910, m910b)
+
+# 验证对齐结果
+print("m910 first timestamp:", m910_aligned['start_time'].iloc[0])
+print("m910b aligned first timestamp:", m910b_aligned['start_time'].iloc[0])
+
+# 如果你想将对齐后的结果保存回原始变量
+m910 = m910_aligned
+m910b = m910b_aligned
