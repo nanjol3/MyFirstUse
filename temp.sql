@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 def process_dataframe(df, name):
     # 确保 'start_time' 列是 datetime 类型
@@ -14,40 +15,50 @@ def process_dataframe(df, name):
         'total_cpu_time': 'mean'
     }).reset_index()
     
-    # 创建包含两个指标的列表
-    result_list = df_30min[['average_peak_memory', 'total_cpu_time']].values.tolist()
+    print(f"Number of 30-minute windows in {name}: {len(df_30min)}")
     
-    print(f"Number of 30-minute windows in {name}: {len(result_list)}")
-    
-    return result_list, df_30min
+    return df_30min
 
-# 处理 m910 数据
-m910_30min, m910_30min_df = process_dataframe(m910, 'm910')
+# 处理 m910 和 m910b 数据
+m910_30min = process_dataframe(m910, 'm910')
+m910b_30min = process_dataframe(m910b, 'm910b')
 
-# 处理 m910b 数据
-m910b_30min, m910b_30min_df = process_dataframe(m910b, 'm910b')
+# 创建比较图
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 12))
 
-# 打印前几个结果作为示例
-print("\nFirst few entries of m910_30min:")
-for i, entry in enumerate(m910_30min[:5]):
-    print(f"Window {i+1}: Avg Peak Memory = {entry[0]:.2f}, Total CPU Time = {entry[1]:.2f}")
+# 设置 x 轴格式
+date_form = mdates.DateFormatter("%Y-%m-%d %H:%M")
 
-print("\nFirst few entries of m910b_30min:")
-for i, entry in enumerate(m910b_30min[:5]):
-    print(f"Window {i+1}: Avg Peak Memory = {entry[0]:.2f}, Total CPU Time = {entry[1]:.2f}")
+# 绘制 Average Peak Memory 对比图
+ax1.plot(m910_30min['time_group'], m910_30min['average_peak_memory'], label='m910', marker='o')
+ax1.plot(m910b_30min['time_group'], m910b_30min['average_peak_memory'], label='m910b', marker='s')
+ax1.set_title('Average Peak Memory Comparison')
+ax1.set_xlabel('Time')
+ax1.set_ylabel('Average Peak Memory')
+ax1.legend()
+ax1.xaxis.set_major_formatter(date_form)
+ax1.grid(True)
 
-# 可视化结果
-def plot_30min_data(df_30min, title):
-    plt.figure(figsize=(12, 6))
-    plt.plot(df_30min['time_group'], df_30min['average_peak_memory'], label='Avg Peak Memory')
-    plt.plot(df_30min['time_group'], df_30min['total_cpu_time'], label='Total CPU Time')
-    plt.title(f'{title} - Non-overlapping 30 Minute Window Analysis')
-    plt.xlabel('Time')
-    plt.ylabel('Values')
-    plt.legend()
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+# 绘制 Total CPU Time 对比图
+ax2.plot(m910_30min['time_group'], m910_30min['total_cpu_time'], label='m910', marker='o')
+ax2.plot(m910b_30min['time_group'], m910b_30min['total_cpu_time'], label='m910b', marker='s')
+ax2.set_title('Total CPU Time Comparison')
+ax2.set_xlabel('Time')
+ax2.set_ylabel('Total CPU Time')
+ax2.legend()
+ax2.xaxis.set_major_formatter(date_form)
+ax2.grid(True)
 
-plot_30min_data(m910_30min_df, 'm910')
-plot_30min_data(m910b_30min_df, 'm910b')
+plt.tight_layout()
+plt.show()
+
+# 打印一些统计信息
+print("\nAverage Peak Memory Statistics:")
+print(f"m910 mean: {m910_30min['average_peak_memory'].mean():.2f}")
+print(f"m910b mean: {m910b_30min['average_peak_memory'].mean():.2f}")
+print(f"Difference: {m910_30min['average_peak_memory'].mean() - m910b_30min['average_peak_memory'].mean():.2f}")
+
+print("\nTotal CPU Time Statistics:")
+print(f"m910 mean: {m910_30min['total_cpu_time'].mean():.2f}")
+print(f"m910b mean: {m910b_30min['total_cpu_time'].mean():.2f}")
+print(f"Difference: {m910_30min['total_cpu_time'].mean() - m910b_30min['total_cpu_time'].mean():.2f}")
