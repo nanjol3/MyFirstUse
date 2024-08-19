@@ -9,6 +9,9 @@ def process_dataframe(df, name, start_time, end_time):
     # 筛选共同时间范围内的数据
     df = df[(df['start_time'] >= start_time) & (df['start_time'] <= end_time)]
     
+    # 处理 CPU 时间的离群值
+    df['total_cpu_time'] = df['total_cpu_time'].apply(lambda x: x * 0.5 if x > 1.0 else x)
+    
     # 创建 30 分钟的时间组
     df['time_group'] = df['start_time'].dt.floor('30T')
     
@@ -48,12 +51,13 @@ ax1.legend()
 ax1.xaxis.set_major_formatter(date_form)
 ax1.grid(True)
 
-# 绘制 Total CPU Time 对比图
+# 绘制调整后的 Total CPU Time 对比图
 ax2.plot(m910_30min['time_group'], m910_30min['total_cpu_time'], label='m910', marker='o', markersize=4)
 ax2.plot(m910b_30min['time_group'], m910b_30min['total_cpu_time'], label='m910b', marker='s', markersize=4)
-ax2.set_title('Total CPU Time Comparison')
+ax2.set_title('Total CPU Time Comparison (Adjusted)')
 ax2.set_xlabel('Time')
 ax2.set_ylabel('Total CPU Time')
+ax2.set_ylim(0, 0.8)  # 设置 y 轴范围为 0 到 0.8
 ax2.legend()
 ax2.xaxis.set_major_formatter(date_form)
 ax2.grid(True)
@@ -67,7 +71,7 @@ print(f"m910 mean: {m910_30min['average_peak_memory'].mean():.2f}")
 print(f"m910b mean: {m910b_30min['average_peak_memory'].mean():.2f}")
 print(f"Difference: {m910_30min['average_peak_memory'].mean() - m910b_30min['average_peak_memory'].mean():.2f}")
 
-print("\nTotal CPU Time Statistics:")
+print("\nAdjusted Total CPU Time Statistics:")
 print(f"m910 mean: {m910_30min['total_cpu_time'].mean():.2f}")
 print(f"m910b mean: {m910b_30min['total_cpu_time'].mean():.2f}")
 print(f"Difference: {m910_30min['total_cpu_time'].mean() - m910b_30min['total_cpu_time'].mean():.2f}")
