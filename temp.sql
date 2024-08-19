@@ -1,70 +1,41 @@
-import psycopg2
-from psycopg2 import sql
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
-def connect_to_remote_db(host, database, user, password, port):
-    try:
-        connection = psycopg2.connect(
-            host=host,
-            database=database,
-            user=user,
-            password=password,
-            port=port
-        )
-        print("成功连接到远程数据库")
-        return connection
-    except (Exception, psycopg2.Error) as error:
-        print("连接到远程数据库时出错:", error)
-        return None
+# 确保 start_time 列是 datetime 类型
+m910['start_time'] = pd.to_datetime(m910['start_time'])
+m910b['start_time'] = pd.to_datetime(m910b['start_time'])
 
-def execute_query(connection, query, params=None):
-    try:
-        with connection.cursor() as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            
-            if cursor.description:
-                return cursor.fetchall()
-            else:
-                connection.commit()
-                return None
-    except (Exception, psycopg2.Error) as error:
-        print("执行查询时出错:", error)
-        return None
+# 获取最近 24 小时的数据
+end_time = max(m910['start_time'].max(), m910b['start_time'].max())
+start_time = end_time - pd.Timedelta(hours=24)
+m910_24h = m910[(m910['start_time'] >= start_time) & (m910['start_time'] <= end_time)]
+m910b_24h = m910b[(m910b['start_time'] >= start_time) & (m910b['start_time'] <= end_time)]
 
-# 数据库连接配置
-db_config = {
-    "host": "52.190.93.13",
-    "port": 41011,
-    "database": "mergeinto",
-    "user": "jtdt",
-    "password": "Gauss_234"
-}
+# 创建两个子图
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 16))
 
-# 主程序
-if __name__ == "__main__":
-    # 连接到数据库
-    conn = connect_to_remote_db(**db_config)
-    
-    if conn:
-        try:
-            # 执行示例查询，从mergeinto schema中选择一个表
-            query = sql.SQL("SELECT * FROM {}.your_table LIMIT 5;").format(sql.Identifier('mergeinto'))
-            results = execute_query(conn, query)
-            
-            if results:
-                for row in results:
-                    print(row)
-            else:
-                print("查询没有返回任何结果。")
-            
-        except (Exception, psycopg2.Error) as error:
-            print("执行查询时出错:", error)
-        
-        finally:
-            # 关闭数据库连接
-            conn.close()
-            print("数据库连接已关闭")
-    else:
-        print("无法建立数据库连接。")
+# 绘制 average_peak_memory 的折线图
+ax1.plot(m910_24h['start_time'], m910_24h['average_peak_memory'], label='m910')
+ax1.plot(m910b_24h['start_time'], m910b_24h['average_peak_memory'], label='m910b')
+ax1.set_xlabel('Start Time')
+ax1.set_ylabel('Average Peak Memory')
+ax1.set_title('Average Peak Memory Comparison')
+ax1.legend()
+ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+ax1.xaxis.set_major_locator(mdates.HourLocator(interval=4))
+plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45, ha='right')
+
+# 绘制 total_cpu_time 的折线图
+ax2.plot(m910_24h['start_time'], m910_24h['total_cpu_time'], label='m910')
+ax2.plot(m910b_24h['start_time'], m910b_24h['total_cpu_time'], label='m910b')
+ax2.set_xlabel('Start Time')
+ax2.set_ylabel('Total CPU Time')
+ax2.set_title('Total CPU Time Comparison')
+ax2.legend()
+ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+ax2.xaxis.set_major_locator(mdates.HourLocator(interval=4))
+plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right')
+
+plt.tight_layout()
+plt.show()
